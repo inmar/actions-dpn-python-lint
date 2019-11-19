@@ -1,16 +1,15 @@
 import * as core from '@actions/core';
-import {wait} from './wait'
+import * as exec from '@actions/exec';
+import * as io from '@actions/io';
+
+
+async function create_venv() {
+
+}
 
 async function run() {
   try {
-    const ms = core.getInput('milliseconds');
-    console.log(`Waiting ${ms} milliseconds ...`)
-
-    core.debug((new Date()).toTimeString())
-    await wait(parseInt(ms, 10));
-    core.debug((new Date()).toTimeString())
-
-    core.setOutput('time', new Date().toTimeString());
+    await exec.exec('pip', ['install', 'black', 'flake8']);
   } catch (error) {
     core.setFailed(error.message);
   }
