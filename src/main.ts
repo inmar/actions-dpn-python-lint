@@ -81,13 +81,17 @@ async function run() {
     const venv_dir = await initialize(run_black, run_flake8);
 
     if (run_flake8) {
+      let args: string[] = directories;
+
       // Run flake8.  Should fail if it finds any issues
-      await venvExec(venv_dir, "flake8", [directories.join(" ")])
+      await venvExec(venv_dir, "flake8", args)
     }
 
     if (run_black) {
+      let args = ["--check"].concat(directories)
+
       // Run black.  Should fail if it finds any issues
-      await venvExec(venv_dir, "black", ["--check", directories.join(" ")])
+      await venvExec(venv_dir, "black", args)
     }
   } catch (error) {
     core.setFailed(error.message);
