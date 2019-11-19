@@ -1,10 +1,16 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'Run common python lints'
+description: 'Runs black and flake8'
+author: 'bobby.ward@inmar.com'
 inputs:
-  myInput:              # change this
-    description: 'input description here'
-    default: 'default value if applicable'
+  directories:
+    description: 'Comma separated list of directories to check'
+    default: '.'
+  black:
+    description: 'Run black'
+    default: 'true'
+  flake8:
+    description: 'Run flake8'
+    default: 'true'
 runs:
   using: 'node12'
   main: 'lib/main.js'
