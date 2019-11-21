@@ -4,13 +4,6 @@ import * as io from '@actions/io';
 import * as path from 'path';
 
 
-/// Run a command inside the virtual env
-async function venvExec(venv_dir, executable, args) {
-  const actual_executable = path.join(venv_dir, "bin", executable);
-  return await exec.exec(actual_executable, args);
-}
-
-
 /// Create the virtualenv
 async function createVenv(venv_dir) {
   await exec.exec("python", ["-m", "venv", venv_dir])
@@ -37,62 +30,81 @@ function getInputJSON(name: string) {
 }
 
 
-/// Set everything up
-async function initialize(run_black, run_flake8) {
-  // The path to the virtualenv
-  const venv_dir = buildVenvDir();
+class Linter {
+  public readonly runBlack: boolean;
+  public readonly runFlake8: boolean;
+  private readonly directories: string[];
+  private venv: string;
 
-  // Create the virtualenv
-  await createVenv(venv_dir)
-
-  // What needs to be installed
-  var args: string[] = ["install"];
-
-  if (run_black) {
-    args.push("black");
+  constructor(black: boolean, flake8: boolean, directories: string[]) {
+    this.runBlack = black;
+    this.runFlake8 = flake8;
+    this.directories = directories;
+    this.venv = '';
   }
 
-  if (run_flake8) {
-    args.push("flake8");
+  /// Run a command inside the virtual env
+  private async venvExec(executable, args) {
+    const actual_executable = path.join(this.venv, "bin", executable);
+    return await exec.exec(actual_executable, args);
   }
 
-  // Install flake8 & black
-  await venvExec(venv_dir, "pip", args);
 
-  return venv_dir;
+  public async initialize(): Promise<void> {
+    // The path to the virtualenv
+    this.venv = buildVenvDir();
+
+    // Create the virtualenv
+    await createVenv(this.venv)
+
+    // What needs to be installed
+    var args: string[] = ["install"];
+
+    if (this.runBlack) {
+      args.push("black");
+    }
+
+    if (this.runFlake8) {
+      args.push("flake8");
+    }
+
+    // Install flake8 & black
+    await this.venvExec("pip", args);
+  }
+
+  public async run(): Promise<void> {
+    // Set everything up
+    if (this.runFlake8) {
+      let args: string[] = this.directories;
+
+      // Run flake8.  Should fail if it finds any issues
+      await this.venvExec("flake8", args)
+    }
+
+    if (this.runBlack) {
+      let args = ["--check"].concat(this.directories)
+
+      // Run black.  Should fail if it finds any issues
+      await this.venvExec("black", args)
+    }
+  }
 }
 
 
 async function run() {
   try {
-    // The list of directories to check with linters
-    const directories: string[] = core.getInput("directories").split(",");
-    // Should black be run?
-    const run_black = getInputJSON("black");
-    // Should flake8 be run?
-    const run_flake8 = getInputJSON("flake8");
+    let black: boolean = getInputJSON("black");
+    let flake8: boolean = getInputJSON("flake8");
 
-    // If there's nothing to run, do nothing
-    if (!run_black && !run_flake8) {
+    if (!black && !flake8) {
+      core.info("Neither black nor flake8 were enabled");
       return;
     }
 
-    // Set everything up
-    const venv_dir = await initialize(run_black, run_flake8);
+    let linter: Linter = new Linter(black, flake8, core.getInput("directories").split(","));
 
-    if (run_flake8) {
-      let args: string[] = directories;
-
-      // Run flake8.  Should fail if it finds any issues
-      await venvExec(venv_dir, "flake8", args)
-    }
-
-    if (run_black) {
-      let args = ["--check"].concat(directories)
-
-      // Run black.  Should fail if it finds any issues
-      await venvExec(venv_dir, "black", args)
-    }
+    await linter.initialize();
+    await linter.run();
   } catch (error) {
     core.setFailed(error.message);
   }
