@@ -5,12 +5,15 @@ inputs:
   directories:
     description: 'Comma separated list of directories to check'
     default: '.'
+    required: false
   black:
     description: 'Run black'
     default: 'true'
+    required: false
   flake8:
     description: 'Run flake8'
     default: 'true'
+    required: false
 runs:
   using: 'node12'
   main: 'lib/main.js'

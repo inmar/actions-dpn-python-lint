@@ -1,101 +1,101 @@
-import * as core from '@actions/core';
-import * as exec from '@actions/exec';
-import * as io from '@actions/io';
-import * as path from 'path';
-
+import * as core from '@actions/core'
+import * as exec from '@actions/exec'
+import * as path from 'path'
 
 /// Run a command inside the virtual env
-async function venvExec(venv_dir, executable, args) {
-  const actual_executable = path.join(venv_dir, "bin", executable);
-  return await exec.exec(actual_executable, args);
+async function venvExec(
+  venvDir: string,
+  executable: string,
+  args: string[]
+): Promise<void> {
+  const actualExecutable = path.join(venvDir, 'bin', executable)
+  await exec.exec(actualExecutable, args)
 }
-
 
 /// Create the virtualenv
-async function createVenv(venv_dir) {
-  await exec.exec("python", ["-m", "venv", venv_dir])
+async function createVenv(venvDir: string): Promise<void> {
+  await exec.exec('python', ['-m', 'venv', venvDir])
 }
-
 
 /// Build the path to the virtualenv
 function buildVenvDir(): string {
   // Create the venv path
-  const home_dir = process.env["HOME"];
-  const action_id = process.env["GITHUB_ACTION"];
+  const homeDir = process.env['HOME']
+  const actionId = process.env['GITHUB_ACTION']
 
-  if (!home_dir) {
-    throw new Error("HOME MISSING");
+  if (!homeDir) {
+    throw new Error('HOME MISSING')
   }
 
-  return path.join(home_dir, `venv-${action_id}`);
+  return path.join(homeDir, `venv-${actionId}`)
 }
-
 
 /// Get the action input as JSON
-function getInputJSON(name: string) {
-  return JSON.parse(core.getInput(name));
+function getInputJSON(name: string): boolean {
+  return JSON.parse(core.getInput(name))
 }
 
-
 /// Set everything up
-async function initialize(run_black, run_flake8) {
+async function initialize(
+  runBlack: boolean,
+  runFlake8: boolean
+): Promise<string> {
   // The path to the virtualenv
-  const venv_dir = buildVenvDir();
+  const venvDir = buildVenvDir()
 
   // Create the virtualenv
-  await createVenv(venv_dir)
+  await createVenv(venvDir)
 
   // What needs to be installed
-  var args: string[] = ["install"];
+  const args: string[] = ['install']
 
-  if (run_black) {
-    args.push("black");
+  if (runBlack) {
+    args.push('black')
   }
 
-  if (run_flake8) {
-    args.push("flake8");
+  if (runFlake8) {
+    args.push('flake8')
   }
 
   // Install flake8 & black
-  await venvExec(venv_dir, "pip", args);
+  await venvExec(venvDir, 'pip', args)
 
-  return venv_dir;
+  return venvDir
 }
 
-
-async function run() {
+async function run(): Promise<void> {
   try {
     // The list of directories to check with linters
-    const directories: string[] = core.getInput("directories").split(",");
+    const directories: string[] = core.getInput('directories').split(',')
     // Should black be run?
-    const run_black = getInputJSON("black");
+    const runBlack = getInputJSON('black')
     // Should flake8 be run?
-    const run_flake8 = getInputJSON("flake8");
+    const runFlake8 = getInputJSON('flake8')
 
     // If there's nothing to run, do nothing
-    if (!run_black && !run_flake8) {
-      return;
+    if (!runBlack && !runFlake8) {
+      return
     }
 
     // Set everything up
-    const venv_dir = await initialize(run_black, run_flake8);
+    const venvDir = await initialize(runBlack, runFlake8)
 
-    if (run_flake8) {
-      let args: string[] = directories;
+    if (runFlake8) {
+      const args: string[] = directories
 
       // Run flake8.  Should fail if it finds any issues
-      await venvExec(venv_dir, "flake8", args)
+      await venvExec(venvDir, 'flake8', args)
     }
 
-    if (run_black) {
-      let args = ["--check"].concat(directories)
+    if (runBlack) {
+      const args = ['--check'].concat(directories)
 
       // Run black.  Should fail if it finds any issues
-      await venvExec(venv_dir, "black", args)
+      await venvExec(venvDir, 'black', args)
     }
   } catch (error) {
-    core.setFailed(error.message);
+    core.setFailed(error.message)
   }
 }
 
-run();
+run()
